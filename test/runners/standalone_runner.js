@@ -1,4 +1,7 @@
-var Runner = require('integra').Runner;
+var Runner = require('integra').Runner
+  , createVersionFilters = require('./shared/filters').createVersionFilters;
+
+var defaultFilters = createVersionFilters();
 
 module.exports = function(configurations) {
   //
@@ -10,10 +13,17 @@ module.exports = function(configurations) {
   var functional_tests_runner = Runner
     // Add configurations to the test runner
     .configurations(configurations)
+    
+    // Execute serially
     .exeuteSerially(true)
-    // First parameter is test suite name
-    // Second parameter is the configuration used
-    // Third parameter is the list of files to execute
+    
+    // No hints
+    .schedulerHints(null)
+
+    // Add default filters
+    .addFilter(defaultFilters)
+
+    // The list of files to execute
     .add("functional_tests",
       [
         '/test/tests/functional/mongo_reply_parser_tests.js'
@@ -64,6 +74,10 @@ module.exports = function(configurations) {
     // Add configurations to the test runner
     .configurations(configurations)
     .exeuteSerially(true)
+
+    // Add default filters
+    .addFilter(defaultFilters)
+
     // First parameter is test suite name
     // Second parameter is the configuration used
     // Third parameter is the list of files to execute

@@ -1,6 +1,5 @@
 var fs = require('fs')
-  , Runner = require('integra').Runner
-  , ParallelRunner = require('integra').ParallelRunner;
+  , Runner = require('integra').Runner;
 
 module.exports = function(configurations) {
   //
@@ -11,25 +10,53 @@ module.exports = function(configurations) {
   var test_results = [];
   var schedulingData = null;
 
+  // Get environmental variables that are known
+  var node_version_array = process
+      .version
+      .replace(/v/g, '')
+      .split('.')
+      .map(function(x) { return parseInt(x, 10) });
+  var mongodb_version_array = null;
+
+  // Check if we have a valid node.js method
+  var validVersions = function(compare_version, version) {
+    var comparator = version.slice(0, 1)
+    var version_array = version
+        .slice(1).split(/\./).map(function(x) { return parseInt(x, 10); });
+
+    // Comparator
+    if(comparator == '>') {
+      if(compare_version[0] >= version_array[0]
+        && compare_version[1] >= version_array[1]
+        && compare_version[2] >= version_array[2])
+        return true;
+    }
+    
+    // No valid node version
+    return false;
+  }
+
   try {
     schedulingData = fs.readFileSync('./stats.tmp', 'utf8');
     schedulingData = JSON.parse(schedulingData);
   } catch(err) {}
 
   // Configure a Run of tests
-  var repl_set_parallel_tests_runner = ParallelRunner
+  var repl_set_parallel_tests_runner = Runner
     // Add configurations to the test runner
     .configurations(configurations)
+
     // The number of parallel contexts we are running with
     .parallelContexts(4)
-    // Parallelize at test or file level
-    .parallelizeAtLevel(ParallelRunner.TEST)
+
     // Execute all tests serially in each context
     .exeuteSerially(true)
+
     // Load runtime information data (used by scheduler)
     // to balance execution as much as possible
     // needs to be array of Json objects with fields {file, test, time}
     .schedulerHints(schedulingData)
+
     // First parameter is test suite name
     // Second parameter is the configuration used
     // Third parameter is the list of files to execute

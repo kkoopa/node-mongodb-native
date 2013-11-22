@@ -8,25 +8,25 @@ var fs = require('fs')
 exports.shouldCreateNewGridStoreObject = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var db = configuration.db();
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gs1
+	    , gs2
+	    , id = new ObjectID()
+	    , filename = 'test_create_gridstore';
 
-  var gs1
-    , gs2
-    , id = new ObjectID()
-    , filename = 'test_create_gridstore';
+	  var gs = new GridStore(db, id, filename, "w");
+	  test.ok(gs instanceof GridStore);
+	  test.equal(id, gs.fileId);
+	  test.equal(filename, gs.filename);
 
-  var gs = new GridStore(db, id, filename, "w");
-  test.ok(gs instanceof GridStore);
-  test.equal(id, gs.fileId);
-  test.equal(filename, gs.filename);
-
-  var gs = GridStore(db, id, filename, "w");
-  test.ok(gs instanceof GridStore);
-  test.equal(id, gs.fileId);
-  test.equal(filename, gs.filename);
-
-  db.close();
-  test.done();
+	  var gs = GridStore(db, id, filename, "w");
+	  test.ok(gs instanceof GridStore);
+	  test.equal(id, gs.fileId);
+	  test.equal(filename, gs.filename);
+	  db.close();
+	  test.done();
+	});
 };
 
 /**
@@ -146,21 +146,24 @@ exports.shouldCorrectlyExecuteGridStoreExistsByObjectId = function(configuration
 exports.shouldCorrectlySafeFileAndReadFileByObjectId = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var gridStore = new GridStore(client, null, "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
 
-        // Let's read the file using object Id
-        GridStore.read(client, result._id, function(err, data) {
-          test.equal('hello world!', data);
-          test.done();
-        });
-      });
-    });
-  });
+	        // Let's read the file using object Id
+	        GridStore.read(db, result._id, function(err, data) {
+	          test.equal('hello world!', data);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -169,27 +172,30 @@ exports.shouldCorrectlySafeFileAndReadFileByObjectId = function(configuration, t
 exports.shouldCorrectlyExecuteGridStoreExists = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var gridStore = new GridStore(client, "foobar", "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        GridStore.exist(client, 'foobar', function(err, result) {
-          test.equal(true, result);
-        });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "foobar", "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        GridStore.exist(db, 'foobar', function(err, result) {
+	          test.equal(true, result);
+	        });
 
-        GridStore.exist(client, 'does_not_exist', function(err, result) {
-          test.equal(false, result);
-        });
+	        GridStore.exist(db, 'does_not_exist', function(err, result) {
+	          test.equal(false, result);
+	        });
 
-        GridStore.exist(client, 'foobar', 'another_root', function(err, result) {
-          test.equal(false, result);
-          test.done();
-        });
-      });
-    });
-  });
+	        GridStore.exist(db, 'foobar', 'another_root', function(err, result) {
+	          test.equal(false, result);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -306,20 +312,23 @@ exports.shouldCorrectlyExecuteGridStoreList = function(configuration, test) {
 exports.shouldCorrectlyPeformGridStoreReadLength = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var gridStore = new GridStore(client, "test_gs_read_length", "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Assert that we have overwriten the data
-        GridStore.read(client, 'test_gs_read_length', 5, function(err, data) {
-          test.equal('hello', data);
-          test.done();
-        });
-      });
-    });
-  });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_read_length", "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Assert that we have overwriten the data
+	        GridStore.read(db, 'test_gs_read_length', 5, function(err, data) {
+	          test.equal('hello', data);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -328,23 +337,27 @@ exports.shouldCorrectlyPeformGridStoreReadLength = function(configuration, test)
 exports.shouldCorrectlyReadFromFileWithOffset = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, "test_gs_read_with_offset", "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello, world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Assert that we have overwriten the data
-        GridStore.read(client, 'test_gs_read_with_offset', 5, 7, function(err, data) {
-          test.equal('world', data);
-        });
 
-        GridStore.read(client, 'test_gs_read_with_offset', null, 7, function(err, data) {
-          test.equal('world!', data);
-          test.done();
-        });
-      });
-    });
-  });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_read_with_offset", "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello, world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Assert that we have overwriten the data
+	        GridStore.read(db, 'test_gs_read_with_offset', 5, 7, function(err, data) {
+	          test.equal('world', data);
+	        });
+
+	        GridStore.read(db, 'test_gs_read_with_offset', null, 7, function(err, data) {
+	          test.equal('world!', data);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -558,6 +571,8 @@ exports.shouldCorrectlyUnlinkAnArrayOfFiles = function(configuration, test) {
 
   fs_client.open(function(err, fs_client) {
     fs_client.dropDatabase(function(err, done) {
+      test.equal(null, err)
+
       var gridStore = new GridStore(fs_client, "test_gs_unlink_as_array", "w");
       gridStore.open(function(err, gridStore) {
         gridStore.write("hello, world!", function(err, gridStore) {
@@ -604,26 +619,30 @@ exports.shouldCorrectlyUnlinkAnArrayOfFiles = function(configuration, test) {
 exports.shouldCorrectlyWriteFileToGridStore= function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, 'test_gs_writing_file', 'w');
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.writeFile('./test/tests/functional/gridstore/test_gs_weird_bug.png', function(err, doc) {
-      GridStore.read(client, 'test_gs_writing_file', function(err, fileData) {
-        test.equal(data.toString('base64'), fileData.toString('base64'));
-        test.equal(fileSize, fileData.length);
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, 'test_gs_writing_file', 'w');
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-        // Ensure we have a md5
-        var gridStore2 = new GridStore(client, 'test_gs_writing_file', 'r');
-        gridStore2.open(function(err, gridStore2) {
-          test.ok(gridStore2.md5 != null)
-          test.done();
-        });
-      });
-    });
-  });
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.writeFile('./test/tests/functional/gridstore/test_gs_weird_bug.png', function(err, doc) {
+	      GridStore.read(db, 'test_gs_writing_file', function(err, fileData) {
+	        test.equal(data.toString('base64'), fileData.toString('base64'));
+	        test.equal(fileSize, fileData.length);
+
+	        // Ensure we have a md5
+	        var gridStore2 = new GridStore(db, 'test_gs_writing_file', 'r');
+	        gridStore2.open(function(err, gridStore2) {
+	          test.ok(gridStore2.md5 != null)
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -632,27 +651,31 @@ exports.shouldCorrectlyWriteFileToGridStore= function(configuration, test) {
 exports.shouldCorrectlyWriteFileToGridStoreUsingObjectId= function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, null, 'w');
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.writeFile('./test/tests/functional/gridstore/test_gs_weird_bug.png', function(err, doc) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, 'w');
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-      GridStore.read(client, doc._id, function(err, fileData) {
-        test.equal(data.toString('base64'), fileData.toString('base64'));
-        test.equal(fileSize, fileData.length);
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.writeFile('./test/tests/functional/gridstore/test_gs_weird_bug.png', function(err, doc) {
 
-        // Ensure we have a md5
-        var gridStore2 = new GridStore(client, doc._id, 'r');
-        gridStore2.open(function(err, gridStore2) {
-          test.ok(gridStore2.md5 != null)
-          test.done();
-        });
-      });
-    });
-  });
+	      GridStore.read(db, doc._id, function(err, fileData) {
+	        test.equal(data.toString('base64'), fileData.toString('base64'));
+	        test.equal(fileSize, fileData.length);
+
+	        // Ensure we have a md5
+	        var gridStore2 = new GridStore(db, doc._id, 'r');
+	        gridStore2.open(function(err, gridStore2) {
+	          test.ok(gridStore2.md5 != null)
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -661,21 +684,25 @@ exports.shouldCorrectlyWriteFileToGridStoreUsingObjectId= function(configuration
 exports.shouldCorrectlyPerformWorkingFiledRead = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, "test_gs_working_field_read", "w");
-  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.write(data, function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Assert that we have overwriten the data
-        GridStore.read(client, 'test_gs_working_field_read', function(err, fileData) {
-          test.equal(data.length, fileData.length);
-          test.done();
-        });
-      });
-    });
-  });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_working_field_read", "w");
+	  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
+
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write(data, function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Assert that we have overwriten the data
+	        GridStore.read(db, 'test_gs_working_field_read', function(err, fileData) {
+	          test.equal(data.length, fileData.length);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -684,41 +711,45 @@ exports.shouldCorrectlyPerformWorkingFiledRead = function(configuration, test) {
 exports.shouldCorrectlyPerformWorkingFiledReadWithChunkSizeLessThanFileSize = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  // Create a new file
-  var gridStore = new GridStore(client, "test.txt", "w");
 
-  // This shouldnt have to be set higher than the file...
-  gridStore.chunkSize = 40960;
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  // Create a new file
+	  var gridStore = new GridStore(db, "test.txt", "w");
 
-  // Open the file
-  gridStore.open(function(err, gridStore) {
-    var file = fs.createReadStream('./test/tests/functional/gridstore/test_gs_working_field_read.pdf');
-    var dataSize = 0;
+	  // This shouldnt have to be set higher than the file...
+	  gridStore.chunkSize = 40960;
 
-    // Write the binary file data to GridFS
-    file.on('data', function (chunk) {
-      dataSize += chunk.length;
+	  // Open the file
+	  gridStore.open(function(err, gridStore) {
+	    var file = fs.createReadStream('./test/tests/functional/gridstore/test_gs_working_field_read.pdf');
+	    var dataSize = 0;
 
-      gridStore.write(chunk, function(err, gridStore) {
-        if(err) {
-          test.ok(false);
-        }
-      });
-    });
+	    // Write the binary file data to GridFS
+	    file.on('data', function (chunk) {
+	      dataSize += chunk.length;
 
-    file.on('close', function () {
-      // Flush the remaining data to GridFS
-      gridStore.close(function(err, result) {
-        // Read in the whole file and check that it's the same content
-        GridStore.read(client, result._id, function(err, fileData) {
-          var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_working_field_read.pdf');
-          test.equal(data.toString('base64'), fileData.toString('base64'));
-          test.done();
-        });
-      });
-    });
-  });
+	      gridStore.write(chunk, function(err, gridStore) {
+	        if(err) {
+	          test.ok(false);
+	        }
+	      });
+	    });
+
+	    file.on('close', function () {
+	      // Flush the remaining data to GridFS
+	      gridStore.close(function(err, result) {
+	        // Read in the whole file and check that it's the same content
+	        GridStore.read(db, result._id, function(err, fileData) {
+	          var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_working_field_read.pdf');
+	          test.equal(data.toString('base64'), fileData.toString('base64'));
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -727,87 +758,24 @@ exports.shouldCorrectlyPerformWorkingFiledReadWithChunkSizeLessThanFileSize = fu
 exports.shouldCorrectlyPerformWorkingFiledWithBigFile = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  // Prepare fake big file
-  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
-  // Write the data multiple times
-  var fd = fs.openSync("./test_gs_working_field_read.tmp", 'w');
-  // Write the data 10 times to create a big file
-  for(var i = 0; i < 10; i++) {
-    fs.writeSync(fd, data);
-  }
-  // Close the file
-  fs.close(fd);
+  var client = configuration.newDbInstance({w:1});
+  client.open(function(err, client) {
+    // Prepare fake big file
+    var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
+    // Write the data multiple times
+    var fd = fs.openSync("./test_gs_working_field_read.tmp", 'w');
+    // Write the data 10 times to create a big file
+    for(var i = 0; i < 10; i++) {
+      fs.writeSync(fd, data);
+    }
+    // Close the file
+    fs.close(fd);
 
-  // Create a new file
-  var gridStore = new GridStore(client, null, "w");
-
-  // This shouldnt have to be set higher than the file...
-  gridStore.chunkSize = 80960;
-
-  // Open the file
-  gridStore.open(function(err, gridStore) {
-    var file = fs.createReadStream('./test_gs_working_field_read.tmp');
-    var dataSize = 0;
-
-    // Write the binary file data to GridFS
-    file.on('data', function (chunk) {
-      dataSize += chunk.length;
-
-      gridStore.write(chunk, function(err, gridStore) {
-        if(err) {
-          test.ok(false);
-        }
-      });
-    });
-
-    file.on('close', function () {
-      // Flush the remaining data to GridFS
-      gridStore.close(function(err, result) {
-        // Read in the whole file and check that it's the same content
-        GridStore.read(client, result._id, function(err, fileData) {
-          var data = fs.readFileSync('./test_gs_working_field_read.tmp');
-          // test.equal(data.toString('base64'), fileData.toString('base64'));
-          // console.log(data.length)
-          // console.log(fileData.length)
-          // for(var i = 0; i < data.length; i++) {
-          //   if(data[i] != fileData[i]) console.log("error at :: " + i)
-          // }
-
-          test.deepEqual(data, fileData);
-          test.done();
-        });
-      });
-    });
-  });
-}
-
-/**
- * @ignore
- */
-exports.shouldCorrectlyPerformWorkingFiledWriteWithDifferentChunkSizes = function(configuration, test) {
-  var GridStore = configuration.getMongoPackage().GridStore
-    , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  // Prepare fake big file
-  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
-  // Write the data multiple times
-  var fd = fs.openSync("./test_gs_working_field_read.tmp", 'w');
-  // Write the data 10 times to create a big file
-  for(var i = 0; i < 10; i++) {
-    fs.writeSync(fd, data);
-  }
-  // Close the file
-  fs.close(fd);
-  // File Size
-  var fileSize = fs.statSync('./test_gs_working_field_read.tmp').size;
-
-  var executeTest = function(_chunkSize, _test, callback) {
     // Create a new file
     var gridStore = new GridStore(client, null, "w");
 
     // This shouldnt have to be set higher than the file...
-    gridStore.chunkSize = _chunkSize;
+    gridStore.chunkSize = 80960;
 
     // Open the file
     gridStore.open(function(err, gridStore) {
@@ -831,24 +799,18 @@ exports.shouldCorrectlyPerformWorkingFiledWriteWithDifferentChunkSizes = functio
           // Read in the whole file and check that it's the same content
           GridStore.read(client, result._id, function(err, fileData) {
             var data = fs.readFileSync('./test_gs_working_field_read.tmp');
+            // test.equal(data.toString('base64'), fileData.toString('base64'));
+            // console.log(data.length)
+            // console.log(fileData.length)
             // for(var i = 0; i < data.length; i++) {
-            //   if(data[i] != fileData[i]) console.log("=============== WRONG :: " + i)
+            //   if(data[i] != fileData[i]) console.log("error at :: " + i)
             // }
+
             test.deepEqual(data, fileData);
-            callback(null, null);
+            client.close();
+            test.done();
           });
         });
-      });
-    });
-  }
-
-  // Execute big chunk size
-  executeTest(80960, test, function(err, result) {
-    // Execute small chunk size
-    executeTest(5000, test, function(err, result) {
-      // Execute chunksize larger than file
-      executeTest(fileSize+100, test, function(err, result) {
-        test.done();
       });
     });
   });
@@ -857,24 +819,104 @@ exports.shouldCorrectlyPerformWorkingFiledWriteWithDifferentChunkSizes = functio
 /**
  * @ignore
  */
+exports.shouldCorrectlyPerformWorkingFiledWriteWithDifferentChunkSizes = function(configuration, test) {
+  var GridStore = configuration.getMongoPackage().GridStore
+    , ObjectID = configuration.getMongoPackage().ObjectID;
+
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  // Prepare fake big file
+	  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_working_field_read.pdf", 'binary');
+	  // Write the data multiple times
+	  var fd = fs.openSync("./test_gs_working_field_read.tmp", 'w');
+	  // Write the data 10 times to create a big file
+	  for(var i = 0; i < 10; i++) {
+	    fs.writeSync(fd, data);
+	  }
+	  // Close the file
+	  fs.close(fd);
+	  // File Size
+	  var fileSize = fs.statSync('./test_gs_working_field_read.tmp').size;
+
+	  var executeTest = function(_chunkSize, _test, callback) {
+	    // Create a new file
+	    var gridStore = new GridStore(db, null, "w");
+
+	    // This shouldnt have to be set higher than the file...
+	    gridStore.chunkSize = _chunkSize;
+
+	    // Open the file
+	    gridStore.open(function(err, gridStore) {
+	      var file = fs.createReadStream('./test_gs_working_field_read.tmp');
+	      var dataSize = 0;
+
+	      // Write the binary file data to GridFS
+	      file.on('data', function (chunk) {
+	        dataSize += chunk.length;
+
+	        gridStore.write(chunk, function(err, gridStore) {
+	          if(err) {
+	            test.ok(false);
+	          }
+	        });
+	      });
+
+	      file.on('close', function () {
+	        // Flush the remaining data to GridFS
+	        gridStore.close(function(err, result) {
+	          // Read in the whole file and check that it's the same content
+	          GridStore.read(db, result._id, function(err, fileData) {
+	            var data = fs.readFileSync('./test_gs_working_field_read.tmp');
+	            // for(var i = 0; i < data.length; i++) {
+	            //   if(data[i] != fileData[i]) console.log("=============== WRONG :: " + i)
+	            // }
+	            test.deepEqual(data, fileData);
+	            callback(null, null);
+	          });
+	        });
+	      });
+	    });
+	  }
+
+	  // Execute big chunk size
+	  executeTest(80960, test, function(err, result) {
+	    // Execute small chunk size
+	    executeTest(5000, test, function(err, result) {
+	      // Execute chunksize larger than file
+	      executeTest(fileSize+100, test, function(err, result) {
+	      	db.close();
+	        test.done();
+	      });
+	    });
+	  });
+	});
+}
+
+/**
+ * @ignore
+ */
 exports.shouldCorrectlyReadAndWriteFile = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, "test_gs_weird_bug", "w");
-  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_weird_bug.png", 'binary');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.write(data, function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Assert that we have overwriten the data
-        GridStore.read(client, 'test_gs_weird_bug', function(err, fileData) {
-          test.equal(data.length, fileData.length);
-          test.done();
-        });
-      });
-    });
-  });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_weird_bug", "w");
+	  var data = fs.readFileSync("./test/tests/functional/gridstore/test_gs_weird_bug.png", 'binary');
+
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write(data, function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Assert that we have overwriten the data
+	        GridStore.read(db, 'test_gs_weird_bug', function(err, fileData) {
+	          test.equal(data.length, fileData.length);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -933,29 +975,33 @@ exports.shouldCorrectlyWriteAndReadJpgImage = function(configuration, test) {
 exports.shouldCorrectlyReadAndWriteBuffersMultipleChunks = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, null, 'w');
-  // Force multiple chunks to be stored
-  gridStore.chunkSize = 5000;
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, 'w');
+	  // Force multiple chunks to be stored
+	  gridStore.chunkSize = 5000;
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-    // Write the file using write
-    gridStore.write(data, function(err, doc) {
-      gridStore.close(function(err, doc) {
+	  gridStore.open(function(err, gridStore) {
 
-        // Read the file using readBuffer
-        new GridStore(client, doc._id, 'r').open(function(err, gridStore) {
-          gridStore.read(function(err, data2) {
-            test.equal(data.toString('base64'), data2.toString('base64'));
-            test.done();
-          })
-        });
-      });
-    })
-  });
+	    // Write the file using write
+	    gridStore.write(data, function(err, doc) {
+	      gridStore.close(function(err, doc) {
+
+	        // Read the file using readBuffer
+	        new GridStore(db, doc._id, 'r').open(function(err, gridStore) {
+	          gridStore.read(function(err, data2) {
+	            test.equal(data.toString('base64'), data2.toString('base64'));
+	            db.close();
+	            test.done();
+	          })
+	        });
+	      });
+	    })
+	  });
+	});
 }
 
 /**
@@ -964,28 +1010,32 @@ exports.shouldCorrectlyReadAndWriteBuffersMultipleChunks = function(configuratio
 exports.shouldCorrectlyReadAndWriteBuffersSingleChunks = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, null, 'w');
-  // Force multiple chunks to be stored
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, 'w');
+	  // Force multiple chunks to be stored
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-    // Write the file using writeBuffer
-    gridStore.write(data, function(err, doc) {
-      gridStore.close(function(err, doc) {
+	  gridStore.open(function(err, gridStore) {
 
-        // Read the file using readBuffer
-        new GridStore(client, doc._id, 'r').open(function(err, gridStore) {
-          gridStore.read(function(err, data2) {
-            test.equal(data.toString('base64'), data2.toString('base64'));
-            test.done();
-          })
-        });
-      });
-    })
-  });
+	    // Write the file using writeBuffer
+	    gridStore.write(data, function(err, doc) {
+	      gridStore.close(function(err, doc) {
+
+	        // Read the file using readBuffer
+	        new GridStore(db, doc._id, 'r').open(function(err, gridStore) {
+	          gridStore.read(function(err, data2) {
+	            test.equal(data.toString('base64'), data2.toString('base64'));
+	            db.close();
+	            test.done();
+	          })
+	        });
+	      });
+	    })
+	  });
+	});
 }
 
 /**
@@ -994,29 +1044,33 @@ exports.shouldCorrectlyReadAndWriteBuffersSingleChunks = function(configuration,
 exports.shouldCorrectlyReadAndWriteBuffersUsingNormalWriteWithMultipleChunks = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, null, 'w');
-  // Force multiple chunks to be stored
-  gridStore.chunkSize = 5000;
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, 'w');
+	  // Force multiple chunks to be stored
+	  gridStore.chunkSize = 5000;
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-    // Write the buffer using the .write method that should use writeBuffer correctly
-    gridStore.write(data, function(err, doc) {
-      gridStore.close(function(err, doc) {
+	  gridStore.open(function(err, gridStore) {
 
-        // Read the file using readBuffer
-        new GridStore(client, doc._id, 'r').open(function(err, gridStore) {
-          gridStore.read(function(err, data2) {
-            test.equal(data.toString('base64'), data2.toString('base64'));
-            test.done();
-          })
-        });
-      });
-    })
-  });
+	    // Write the buffer using the .write method that should use writeBuffer correctly
+	    gridStore.write(data, function(err, doc) {
+	      gridStore.close(function(err, doc) {
+
+	        // Read the file using readBuffer
+	        new GridStore(db, doc._id, 'r').open(function(err, gridStore) {
+	          gridStore.read(function(err, data2) {
+	            test.equal(data.toString('base64'), data2.toString('base64'));
+	            db.close();
+	            test.done();
+	          })
+	        });
+	      });
+	    })
+	  });
+	});
 }
 
 /**
@@ -1025,28 +1079,32 @@ exports.shouldCorrectlyReadAndWriteBuffersUsingNormalWriteWithMultipleChunks = f
 exports.shouldCorrectlyReadAndWriteBuffersSingleChunksAndVerifyExistance = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, null, 'w');
-  // Force multiple chunks to be stored
-  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
-  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-  gridStore.open(function(err, gridStore) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, null, 'w');
+	  // Force multiple chunks to be stored
+	  var fileSize = fs.statSync('./test/tests/functional/gridstore/test_gs_weird_bug.png').size;
+	  var data = fs.readFileSync('./test/tests/functional/gridstore/test_gs_weird_bug.png');
 
-    // Write the file using writeBuffer
-    gridStore.write(data, function(err, doc) {
-      gridStore.close(function(err, doc) {
+	  gridStore.open(function(err, gridStore) {
 
-        // Read the file using readBuffer
-        GridStore.exist(client, doc._id, function(err, result) {
-          test.equal(null, err);
-          test.equal(true, result);
+	    // Write the file using writeBuffer
+	    gridStore.write(data, function(err, doc) {
+	      gridStore.close(function(err, doc) {
 
-          test.done();
-        });
-      });
-    })
-  });
+	        // Read the file using readBuffer
+	        GridStore.exist(db, doc._id, function(err, result) {
+	          test.equal(null, err);
+	          test.equal(true, result);
+
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    })
+	  });
+	});
 }
 
 /**
@@ -1055,23 +1113,27 @@ exports.shouldCorrectlyReadAndWriteBuffersSingleChunksAndVerifyExistance = funct
 exports.shouldCorrectlySaveDataByObjectID = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, 'w');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.write('bar', function(err, gridStore) {
-      gridStore.close(function(err, result) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, 'w');
 
-        GridStore.exist(client, id, function(err, result) {
-          test.equal(null, err);
-          test.equal(true, result);
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write('bar', function(err, gridStore) {
+	      gridStore.close(function(err, result) {
 
-          test.done();
-        });
-      });
-    });
-  });
+	        GridStore.exist(db, id, function(err, result) {
+	          test.equal(null, err);
+	          test.equal(true, result);
+
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1080,22 +1142,26 @@ exports.shouldCorrectlySaveDataByObjectID = function(configuration, test) {
 exports.shouldCheckExistsByUsingRegexp = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var gridStore = new GridStore(client, 'shouldCheckExistsByUsingRegexp.txt', 'w');
 
-  gridStore.open(function(err, gridStore) {
-    gridStore.write('bar', function(err, gridStore) {
-      gridStore.close(function(err, result) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, 'shouldCheckExistsByUsingRegexp.txt', 'w');
 
-        GridStore.exist(client, /shouldCheck/, function(err, result) {
-          test.equal(null, err);
-          test.equal(true, result);
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write('bar', function(err, gridStore) {
+	      gridStore.close(function(err, result) {
 
-          test.done();
-        });
-      });
-    });
-  });
+	        GridStore.exist(db, /shouldCheck/, function(err, result) {
+	          test.equal(null, err);
+	          test.equal(true, result);
+
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1688,23 +1754,26 @@ exports.shouldCorrectlyOpenGridStoreWithDifferentRoot = function(configuration, 
 exports.shouldCorrectlySetFilenameForGridstoreOpen = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, "test_gs_read_length", "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Open the gridstore
-        gridStore = new GridStore(client, id, "r");
-        gridStore.open(function(err, gridStore) {
-          test.equal(null, err);
-          test.equal("test_gs_read_length", gridStore.filename);
-          test.done();
-        });
-      });
-    });
-  });
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, "test_gs_read_length", "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Open the gridstore
+	        gridStore = new GridStore(db, id, "r");
+	        gridStore.open(function(err, gridStore) {
+	          test.equal(null, err);
+	          test.equal("test_gs_read_length", gridStore.filename);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1713,37 +1782,40 @@ exports.shouldCorrectlySetFilenameForGridstoreOpen = function(configuration, tes
 exports.shouldCorrectlyAppendToFileCorrectly = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, "test_gs_read_length", "w", {chunk_size:5});
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, "test_gs_read_length", "w", {chunk_size:5});
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
 
-        // Open in append mode and keep writing
-        gridStore = new GridStore(client, id, "test_gs_read_length", "w+", {chunk_size:5});
-        gridStore.open(function(err, gridStore) {
-          gridStore.write("again again!", function(err, gridStore) {
-            gridStore.close(function(err, result) {
+	        // Open in append mode and keep writing
+	        gridStore = new GridStore(db, id, "test_gs_read_length", "w+", {chunk_size:5});
+	        gridStore.open(function(err, gridStore) {
+	          gridStore.write("again again!", function(err, gridStore) {
+	            gridStore.close(function(err, result) {
 
-              // Open the gridstore
-              gridStore = new GridStore(client, id, "r");
-              gridStore.open(function(err, gridStore) {
-                test.equal(null, err);
-                test.equal("test_gs_read_length", gridStore.filename);
+	              // Open the gridstore
+	              gridStore = new GridStore(db, id, "r");
+	              gridStore.open(function(err, gridStore) {
+	                test.equal(null, err);
+	                test.equal("test_gs_read_length", gridStore.filename);
 
-                gridStore.read(function(err, data) {
-                  test.equal("hello world!again again!", data.toString());
-                  test.done();
-                })
-              });
-            });
-          });
-        });
-      });
-    });
-  });
+	                gridStore.read(function(err, data) {
+	                  test.equal("hello world!again again!", data.toString());
+	                  db.close();
+	                  test.done();
+	                })
+	              });
+	            });
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1752,33 +1824,36 @@ exports.shouldCorrectlyAppendToFileCorrectly = function(configuration, test) {
 exports.shouldCorrectlySaveFileAndThenOpenChangeContentTypeAndSaveAgain = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, "test_gs_read_length", "w", {content_type: "image/jpeg"});
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Open the gridstore
-        new GridStore(client, id, "w+").open(function(err, gridStore) {
-          gridStore.contentType = "html/text";
-          gridStore.close(function(err, result) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, "test_gs_read_length", "w", {content_type: "image/jpeg"});
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Open the gridstore
+	        new GridStore(db, id, "w+").open(function(err, gridStore) {
+	          gridStore.contentType = "html/text";
+	          gridStore.close(function(err, result) {
 
-            new GridStore(client, id, "r").open(function(err, gridStore) {
-              test.equal(null, err);
-              test.equal("html/text", gridStore.contentType);
+	            new GridStore(db, id, "r").open(function(err, gridStore) {
+	              test.equal(null, err);
+	              test.equal("html/text", gridStore.contentType);
 
-              gridStore.read(function(err, data) {
-                test.equal(null, err);
-                test.equal("hello world!", data.toString('utf8'));
-                test.done();
-              });
-            });
-          });
-        });
-      });
-    });
-  });
+	              gridStore.read(function(err, data) {
+	                test.equal(null, err);
+	                test.equal("hello world!", data.toString('utf8'));
+	                db.close();
+	                test.done();
+	              });
+	            });
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1787,34 +1862,37 @@ exports.shouldCorrectlySaveFileAndThenOpenChangeContentTypeAndSaveAgain = functi
 exports.shouldCorrectlyHandleSeekWithStream = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, "test_gs_read_length", "w", {content_type: "image/jpeg"});
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Open the gridstore
-        new GridStore(client, id, "r").open(function(err, gridStore) {
-          test.equal(null, err);
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, "test_gs_read_length", "w", {content_type: "image/jpeg"});
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Open the gridstore
+	        new GridStore(db, id, "r").open(function(err, gridStore) {
+	          test.equal(null, err);
 
-          gridStore.pause();
+	          gridStore.pause();
 
-          gridStore.seek(2, function(err, gstore) {
-            test.equal(null, err);
+	          gridStore.seek(2, function(err, gstore) {
+	            test.equal(null, err);
 
-            var stream = gridStore.stream(true);
+	            var stream = gridStore.stream(true);
 
-            stream.on('data', function(chunk) {
-              test.equal("llo world!", chunk.toString());
-            }).on('end', function() {
-              test.done();
-            }).resume();
-          });
-        });
-      });
-    });
-  });
+	            stream.on('data', function(chunk) {
+	              test.equal("llo world!", chunk.toString());
+	            }).on('end', function() {
+	            	db.close();
+	              test.done();
+	            }).resume();
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1823,36 +1901,39 @@ exports.shouldCorrectlyHandleSeekWithStream = function(configuration, test) {
 exports.shouldCorrectlyHandleSeekIntoSecondChunkWithStream = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
 
-  var id = new ObjectID();
-  var gridStore = new GridStore(client, id, "test_gs_read_length", "w", {content_type: "image/jpeg", chunk_size:5});
-  gridStore.open(function(err, gridStore) {
-    gridStore.write("hello world!", function(err, gridStore) {
-      gridStore.close(function(err, result) {
-        // Open the gridstore
-        new GridStore(client, id, "r").open(function(err, gridStore) {
-          test.equal(null, err);
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
+	  var gridStore = new GridStore(db, id, "test_gs_read_length", "w", {content_type: "image/jpeg", chunk_size:5});
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write("hello world!", function(err, gridStore) {
+	      gridStore.close(function(err, result) {
+	        // Open the gridstore
+	        new GridStore(db, id, "r").open(function(err, gridStore) {
+	          test.equal(null, err);
 
-          gridStore.pause();
+	          gridStore.pause();
 
-          gridStore.seek(7, function(err, gstore) {
-            test.equal(null, err);
+	          gridStore.seek(7, function(err, gstore) {
+	            test.equal(null, err);
 
-            var stream = gridStore.stream(true);
-            var data = '';
+	            var stream = gridStore.stream(true);
+	            var data = '';
 
-            stream.on('data', function(chunk) {
-              data = data + chunk.toString();
-            }).on('end', function() {
-              test.equal("orld!", data);
-              test.done();
-            }).resume();
-          });
-        });
-      });
-    });
-  });
+	            stream.on('data', function(chunk) {
+	              data = data + chunk.toString();
+	            }).on('end', function() {
+	              test.equal("orld!", data);
+	              db.close();
+	              test.done();
+	            }).resume();
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1861,37 +1942,40 @@ exports.shouldCorrectlyHandleSeekIntoSecondChunkWithStream = function(configurat
 exports['Should correctly handle multiple seeks'] = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var db = configuration.db();
 
-  var gridStore = new GridStore(db, "test_gs_seek_with_buffer", "w");
-  gridStore.open(function(err, gridStore) {
-    gridStore.write(new Buffer("012345678901234567890", "utf8"), function(err, gridStore) {
-      gridStore.close(function(result) {
-        var gridStore2 = new GridStore(db, "test_gs_seek_with_buffer", "r");
-        gridStore2.open(function(err, gridStore2) {
-          
-          gridStore2.read( 5, function(err, data) {
-            test.equal("01234", data.toString());
-            
-            gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
-              
-              gridStore2.read( 5, function(err, data) {
-                test.equal("34567", data.toString());
-                
-                gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_seek_with_buffer", "w");
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write(new Buffer("012345678901234567890", "utf8"), function(err, gridStore) {
+	      gridStore.close(function(result) {
+	        var gridStore2 = new GridStore(db, "test_gs_seek_with_buffer", "r");
+	        gridStore2.open(function(err, gridStore2) {
+	          
+	          gridStore2.read( 5, function(err, data) {
+	            test.equal("01234", data.toString());
+	            
+	            gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
+	              
+	              gridStore2.read( 5, function(err, data) {
+	                test.equal("34567", data.toString());
+	                
+	                gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
 
-                  gridStore2.read( 5, function(err, data) {
-                    test.equal("67890", data.toString());
-                    test.done();
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-    });
-  });
+	                  gridStore2.read( 5, function(err, data) {
+	                    test.equal("67890", data.toString());
+	                    db.close();
+	                    test.done();
+	                  });
+	                });
+	              });
+	            });
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1900,37 +1984,40 @@ exports['Should correctly handle multiple seeks'] = function(configuration, test
 exports['Should correctly handle multiple seeks over several chunks'] = function(configuration, test) {
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var db = configuration.db();
 
-  var gridStore = new GridStore(db, "test_gs_seek_with_buffer", "w", {chunk_size:4});
-  gridStore.open(function(err, gridStore) {
-    gridStore.write(new Buffer("012345678901234567890", "utf8"), function(err, gridStore) {
-      gridStore.close(function(result) {
-        var gridStore2 = new GridStore(db, "test_gs_seek_with_buffer", "r");
-        gridStore2.open(function(err, gridStore2) {
-          
-          gridStore2.read( 5, function(err, data) {
-            test.equal("01234", data.toString());
-            
-            gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
-              
-              gridStore2.read( 5, function(err, data) {
-                test.equal("34567", data.toString());
-                
-                gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var gridStore = new GridStore(db, "test_gs_seek_with_buffer", "w", {chunk_size:4});
+	  gridStore.open(function(err, gridStore) {
+	    gridStore.write(new Buffer("012345678901234567890", "utf8"), function(err, gridStore) {
+	      gridStore.close(function(result) {
+	        var gridStore2 = new GridStore(db, "test_gs_seek_with_buffer", "r");
+	        gridStore2.open(function(err, gridStore2) {
+	          
+	          gridStore2.read( 5, function(err, data) {
+	            test.equal("01234", data.toString());
+	            
+	            gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
+	              
+	              gridStore2.read( 5, function(err, data) {
+	                test.equal("34567", data.toString());
+	                
+	                gridStore2.seek(-2, GridStore.IO_SEEK_CUR, function(err, gridStore2) {
 
-                  gridStore2.read( 5, function(err, data) {
-                    test.equal("67890", data.toString());
-                    test.done();
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-    });
-  });
+	                  gridStore2.read( 5, function(err, data) {
+	                    test.equal("67890", data.toString());
+	                    db.close();
+	                    test.done();
+	                  });
+	                });
+	              });
+	            });
+	          });
+	        });
+	      });
+	    });
+	  });
+	});
 }
 
 /**
@@ -1940,32 +2027,36 @@ exports.shouldWriteFileWithMongofilesAndReadWithNodeJS = function(configuration,
   if(configuration.db().serverConfig instanceof configuration.getMongoPackage().ReplSet) return test.done();
   var GridStore = configuration.getMongoPackage().GridStore
     , ObjectID = configuration.getMongoPackage().ObjectID;
-  var client = configuration.db();
-  var id = new ObjectID();
 
-  console.dir(__dirname + "/iya_logo_final_bw.jpg")
+  var db = configuration.newDbInstance({w:1}, {poolSize:1});
+  db.open(function(err, db) {
+	  var id = new ObjectID();
 
-  // Execute function
-  var exec_function = format("mongofiles --host localhost --port 27017 --db %s put %s", configuration.db_name, __dirname + "/iya_logo_final_bw.jpg");
-  var exec = child_process.exec;
-  // Read the data to compare
-  var originalData = fs.readFileSync(__dirname + "/iya_logo_final_bw.jpg");
-  // Upload using the mongofiles
-  exec(exec_function, function(error, stdout, stderr) {
-    test.ok(stdout.match(/added file/) != -1);
+	  console.dir(__dirname + "/iya_logo_final_bw.jpg")
 
-    GridStore.list(client, function(err, items) {
-      // Load the file using MongoDB
-      var gridStore = new GridStore(client, __dirname + "/iya_logo_final_bw.jpg", "r", {});
-      gridStore.open(function(err, gridStore) {
-        test.equal(null, err);
+	  // Execute function
+	  var exec_function = format("mongofiles --host localhost --port 27017 --db %s put %s", configuration.db_name, __dirname + "/iya_logo_final_bw.jpg");
+	  var exec = child_process.exec;
+	  // Read the data to compare
+	  var originalData = fs.readFileSync(__dirname + "/iya_logo_final_bw.jpg");
+	  // Upload using the mongofiles
+	  exec(exec_function, function(error, stdout, stderr) {
+	    test.ok(stdout.match(/added file/) != -1);
 
-        gridStore.read(function(err, data) {
-          test.equal(null, err);
-          test.deepEqual(originalData, data);
-          test.done();
-        });
-      });
-    });
-  });
+	    GridStore.list(db, function(err, items) {
+	      // Load the file using MongoDB
+	      var gridStore = new GridStore(db, __dirname + "/iya_logo_final_bw.jpg", "r", {});
+	      gridStore.open(function(err, gridStore) {
+	        test.equal(null, err);
+
+	        gridStore.read(function(err, data) {
+	          test.equal(null, err);
+	          test.deepEqual(originalData, data);
+	          db.close();
+	          test.done();
+	        });
+	      });
+	    });
+	  });
+	});
 }
